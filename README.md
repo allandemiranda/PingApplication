@@ -95,7 +95,7 @@ The project follows a modular and layered architecture to ensure scalability, ma
   |          |------------------------------|                               *       |---------------------------------------------|                                                    |----------------------|
   |               |                      ^                                                 |                             ^                                                                |             ^
   |               +                      |                                                 +                             |                                                                +             |
-  |            (<host>)                  |                                              (<host>)                         |                                                             (<DTO>)          |
+  |            (<host>)                  |                                              (<host>)                         |                                                         (<Report DTO>)       |
   |               +                      +                                                 +                             +                                                                +             +
   |               |              (ResponseFactory<DTO>)                                    |                    (ResponseFactory<DTO>)                                                    |     (ResponseFactory<VOID>)
   |               |                      +                                                 |                             +                                                                |             +
@@ -105,7 +105,7 @@ The project follows a modular and layered architecture to ensure scalability, ma
 --+--             |                      |                                                 |                             |                                                                      |
 | H |             |                      |                                                 |                             |                                                                      |
 | A |             +                      |                                                 +                             |                                                                      +
-| N | (request start ping/trace <host>)  |                                 (request lest ICMP/TCP/Trace <host>)          |                                                          (request post report <DTO>)
+| N | (request start ping/trace <host>)  |                                 (request lest ICMP/TCP/Trace <host>)          |                                                          (request post <Report DTO>)
 | D |             +                      +                                                 +                             +                                                                      +
 | L |             |                   (<DTO>)                                              |                          (<DTO>)                                                                   |
 | E |             |                      +                                                 |                             +                                                                      |
@@ -114,20 +114,20 @@ The project follows a modular and layered architecture to ensure scalability, ma
   +--   [========= ICMP/TCP/Trace Service ===================================================== ICMP/TCP/Trace Service ===================] -----------------+----------------[========== Report Service =============]
   |               |                      |                                                 |                             ^                                                                      |
 --+--             |                      +                                                 +                             |                                                                      |
-| T |             |                   (<DTO>)                                            (<ID>)                          +                                                                      +
-| H |             +                      +                                                 +                          (<DTO>)                                                     [Serialization <DTO> to <JSON>]                              
+| T |             |                   (<DTO>)                            [get <ID ICMP/TCP/Trace> from <host>]           +                                                                      +
+| H |             +                      +                                                 +                          (<DTO>)                                                 [Serialization <Report DTO> to <JSON>]                              
 | R |[=== http/terminal socket ===]      |                                                 |                             +                                                                      +
 | O |             +                      +                                                 |                             |                                                                      |
-| W |             |           [=== Mapping to <DTO> ===]                                   |                             +                                                                      +
---+--             +                      +                                                 |                 [=== Mapping to <DTO> ===]                                                     (<JSON>)
-  |     (Entity<ICMP/TCP/Trace>)         |                                                 |                             +                                                                      +                  
+| W |             |           [=== Mapping to <DTO> ===]                                   +                             +                                                                      +
+--+--             +                      +                                               (<ID>)               [=== Mapping to <DTO> ===]                                                     (<JSON>)
+  |     (Entity<ICMP/TCP/Trace>)         |                                                 +                             +                                                                      +                  
   |               +                      |                                                 |                             |                                                                      |                     
   |               |                      |                                                 |                             +                                                   +------------------+------------------+                    
   |               +----------+-----------+                                                 |                (Result Entity<ICMP/TCP/Trace>)                                  |                                     |
   |                          |                                                             |                             +                                                   +                                     |                     
   |                          *                                                             *                             |                                          [HTTP query request]                           |           
   |                      ** SAVE **                                                    ** GET **                         |                                                   +                                     v
-  |                          *                                                             *                             |                                                   |             [=== Appending Log JSON Warning on app.log file ===]
+  |                          *                                                             *                             |                                                   |               [=== Appending Log Warning on app.log file ===]
   |                          |                                                             |                             |                                                   +
   |                          v                                                             v                             |                                                (<HTTP>)
   |     [=========== ICMP/TCP/Trace DataBase ================================================= ICMP/TCP/Trace DataBase ===================]                                  +
