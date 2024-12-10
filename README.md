@@ -125,15 +125,15 @@ The project follows a modular and layered architecture to ensure scalability, ma
   |               |                      |                                                 |                             +                                                   +------------------+------------------+                    
   |               +----------+-----------+                                                 |                (Result Entity<ICMP/TCP/Trace>)                                  |                                     |
   |                          |                                                             |                             +                                                   +                                     |                     
-  |                          *                                                             *                             |                                           [HTTP query request]                          |           
+  |                          *                                                             *                             |                                          [HTTP query request]                           |           
   |                      ** SAVE **                                                    ** GET **                         |                                                   +                                     v
   |                          *                                                             *                             |                                                   |             [=== Appending Log JSON Warning on app.log file ===]
-  |                          |                                                             |                             |                                                   v
-  |                          v                                                             v                             |                                       [=== External Report API ===]    
-  |     [=========== ICMP/TCP/Trace DataBase ================================================= ICMP/TCP/Trace DataBase ===================]                                 
-  |                                                             |                   ^
-  |                                                             |                   |
-  |                                                             v                   |
+  |                          |                                                             |                             |                                                   +
+  |                          v                                                             v                             |                                                (<HTTP>)
+  |     [=========== ICMP/TCP/Trace DataBase ================================================= ICMP/TCP/Trace DataBase ===================]                                  +
+  |                                                             |                   ^                                                                                        |
+  |                                                             |                   |                                                                                        v
+  |                                                             v                   |                                                                           [=== External Report API ===]   
   |                      ___________________________________________________________________________________________________
   +--                   | *** ICMP MAP<ID, ENTITY>  ***  +  *** TCP MAP<ID, ENTITY>  ***  +  *** Trace MAP<ID, ENTITY>  *** |
 
