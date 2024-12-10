@@ -156,9 +156,10 @@ The project follows a modular and layered architecture to ensure scalability, ma
   |                                                            |                                                  |           ^                                                                       
   |                                                            |                                                  |           |                                                                                                       
   |                                                            v                                                  v           |
-  |                                              ___________________________________________________________________________________________________
-  +--                                           | *** ICMP MAP<ID, ENTITY>  ***  +  *** TCP MAP<ID, ENTITY>  ***  +  *** Trace MAP<ID, ENTITY>  *** |
-
+  |                                         ______________________________________________________________________________________________________________________
+  |                                         |     ________________________________     ________________________________     _________________________________    |
+  +--                                       |    | *** ICMP MAP<ID, ENTITY>  ***  |   |  *** TCP MAP<ID, ENTITY>  ***  |   |  *** Trace MAP<ID, ENTITY>  *** |   |
+                                                
 
 ```
 This architecture promotes a clear separation of responsibilities:
