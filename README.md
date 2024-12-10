@@ -74,71 +74,93 @@ The project follows a modular and layered architecture to ensure scalability, ma
 ### Structural Map
 
 ```
-                                                                           BatchJobsConfig (start of flow)
-                                                                                       |
-                                                                                       + <--- InitializationFactory (injects dependencies and configurations)
-                                                                                       |
-                                 _________________________________                     | 
-  +--------------------------    | Scheduled task basket in loop |                     |
-  |                              |         | X X X X X | <---- ICMP Ping Job <---------+
---+--                [X] <==============   | X X X X X | <---- TCP/IP Ping Job <-------+
-| J |            +-- RUN <---+   |         | X X X X X | <---- Traceroute Job <--------+
-| O |            |           |   |_______________________________|
-| B |            |           |                                
---+--            +           +----[DELAY]--------------------+-----------------------------------------------------------------------------------------------------------------------------------+
-  |         (config info)                                    |                                                                                                                                   |
-  |              +                                           *                                                                                                                                   |
-  |              |                                        * not *                                                                                                                                |                                                        
-  |              v                                           *                                                                                                                                   |
-  |          |------------------------------|                |              *       |---------------------------------------------|                                                    |----------------------|
-  |          | Request a Ping or Traceroute | ---> [if bad ping/trace] --* yes *--> | Request lest ICMP/TCP/Trace (three request) | --- [Joing ICMP/TCP/Trace DTOs to Report DTO] ---> | Post Bad Report Data |
-  |          |------------------------------|                               *       |---------------------------------------------|                                                    |----------------------|
-  |               |                      ^                                                 |                             ^                                                                |             ^
-  |               +                      |                                                 +                             |                                                                +             |
-  |            (<host>)                  |                                              (<host>)                         |                                                         (<Report DTO>)       |
-  |               +                      +                                                 +                             +                                                                +             +
-  |               |              (ResponseFactory<DTO>)                                    |                    (ResponseFactory<DTO>)                                                    |     (ResponseFactory<VOID>)
-  |               |                      +                                                 |                             +                                                                |             +
-  |               v                      |                                                 v                             |                                                                v             |
-  +--   [============= Ping Controller ============================================================ Ping Controller =======================]-----------------+----------------[========== Report Controller ==========]
-  |               |                      ^                                                 |                             ^                                                                      |                 
---+--             |                      |                                                 |                             |                                                                      |
-| H |             |                      |                                                 |                             |                                                                      |
-| A |             +                      |                                                 +                             |                                                                      +
-| N | (request start ping/trace <host>)  |                                 (request lest ICMP/TCP/Trace <host>)          |                                                          (request post <Report DTO>)
-| D |             +                      +                                                 +                             +                                                                      +
-| L |             |                   (<DTO>)                                              |                          (<DTO>)                                                                   |
-| E |             |                      +                                                 |                             +                                                                      |
---+--             |                      |                                                 |                             |                                                                      |
-  |               v                      |                                                 v                             |                                                                      v
-  +--   [========= ICMP/TCP/Trace Service ===================================================== ICMP/TCP/Trace Service ===================] -----------------+----------------[========== Report Service =============]
-  |               |                      |                                                 |                             ^                                                                      |
---+--             |                      +                                                 +                             |                                                                      |
-| T |             |                   (<DTO>)                            [get <ID ICMP/TCP/Trace> from <host>]           +                                                                      +
-| H |             +                      +                                                 +                          (<DTO>)                                                 [Serialization <Report DTO> to <JSON>]                              
-| R |[=== http/terminal socket ===]      |                                                 |                             +                                                                      +
-| O |             +                      +                                                 |                             |                                                                      |
-| W |             |           [=== Mapping to <DTO> ===]                                   +                             +                                                                      +
---+--             +                      +                                               (<ID>)               [=== Mapping to <DTO> ===]                                                     (<JSON>)
-  |     (Entity<ICMP/TCP/Trace>)         |                                                 +                             +                                                                      +                  
-  |               +                      |                                                 |                             |                                                                      |                     
-  |               |                      |                                                 |                             +                                                   +------------------+------------------+                    
-  |               +----------+-----------+                                                 |                (Result Entity<ICMP/TCP/Trace>)                                  |                                     |
-  |                          |                                                             |                             +                                                   +                                     |                     
-  |                          *                                                             *                             |                                          [HTTP query request]                           |           
-  |                      ** SAVE **                                                    ** GET **                         |                                                   +                                     v
-  |                          *                                                             *                             |                                                   |               [=== Appending Log Warning on app.log file ===]
-  |                          |                                                             |                             |                                                   +
-  |                          v                                                             v                             |                                                (<HTTP>)
-  |     [=========== ICMP/TCP/Trace DataBase ================================================= ICMP/TCP/Trace DataBase ===================]                                  +
-  |                                                             |                   ^                                                                                        |
-  |                                                             |                   |                                                                                        v
-  |                                                             v                   |                                                                           [=== External Report API ===]   
-  |                      ___________________________________________________________________________________________________
-  +--                   | *** ICMP MAP<ID, ENTITY>  ***  +  *** TCP MAP<ID, ENTITY>  ***  +  *** Trace MAP<ID, ENTITY>  *** |
+                                                                                BatchJobsConfig (start of flow)
+                                                                                            |
+                                                                                            + <--- InitializationFactory (injects dependencies and configurations)
+                                                                                            |
+                                 _________________________________                          | 
+  +--------------------------    | Scheduled task basket in loop |                          |
+  |                ONE JOB       |              | X X X X X | <---- ICMP Ping Job <---------+
+--+--                [X] <==(<config info>)==   | X X X X X | <---- TCP/IP Ping Job <-------+                       [Sleep Job <time> from <config info> (delay)]
+| J |            +-- RUN <---+   |              | X X X X X | <---- Traceroute Job <--------+                                   |           ^
+| O |            |           |   |_______________________________|                                                              |           |
+| B |            |           |                                                                                                  |           |
+--+--            |           +--------------------------------------------------------------------------------------------------+           |
+  |              |                                                                                                                          |
+  |              |                                           +------------------------------------------------------------------------------+------------------------------------------------------------------------------------------+
+  |              |                                           |                                                                                                                                                                         |
+  |              |                                           *                                                                                                                                                                         |
+  |              |                                       * false *                                                                                                                                                                     |                                                        
+  |              v                                           *                                                                                                                                                                         |
+  |          |------------------------------|                |                *                                  |---------------------------------------------|                                                      |------------------------------------|
+  |          | Request a Ping or Traceroute | ---> [If bad ping/trace] ----* true *----------------------------> | Request lest ICMP/TCP/Trace (three request) | ---> [Joing ICMP/TCP/Trace DTOs to <Report DTO>] --->|      Post Bad Report Data          |
+  |          |------------------------------|                                 *                                  |---------------------------------------------|                                                      |------------------------------------|
+  |               |                      ^                                                                              |                             ^                                                                  |                            ^
+  |               +                      |                                                                              +                             |                                                                  +                            |
+  |  (<host> from <config info>)         |                                                                  (<host> from <config info>)               |                                                           (<Report DTO>)                      |
+  |               +                      +                                                                              +                             +                                                                  +                            +
+  |               |       (ResponseFactory<ICMP/TCP/Trace DTO>)                                                         |              (ResponseFactory<ICMP/TCP/Trace DTO>)                                             |                  (ResponseFactory<VOID>)
+  |               |                      +                                                                              |                             +                                                                  |                            +
+  |               v                      |                                                                              v                             |                                                                  v                            |
+  +--   [============= Ping Controller ===================================================================================== Ping Controller ============================]-----------------+-----------------[================= Report Controller ========================]
+  |               |                      ^                                                                              |                             ^                                                                  |                            ^
+  |               |                      |                                                                              |                             |                                                                  |                            |
+  |               +                      +                                                                              +                             +                                                                  +                            |
+  |           (<host>)     (ResponseFactory<ICMP/TCP/Trace DTO>)                                                     (<host>)           (ResponseFactory<ICMP/TCP/Trace DTO>)                                      (<Report DTO>)            (ResponseFactory<VOID>)
+  |               +                      +                                                                              +                             +                                                                  +                            +
+  |               |                      |                                                                              |                             |                                                                  |                            |
+--+--             |                      +                                                                              |                             +                                                                  |                            +
+| H |             |   [Building ResponseFactory<ICMP/TCP/Trace DTO>]                                                    |         [Building ResponseFactory<ICMP/TCP/Trace DTO>]                                         |            [Building ResponseFactory<VOID>]
+| A |             +                      +                                                                              +                             +                                                                  +                            +
+| N | [Request start ping/trace <host>]  |                                                              [Request lest ICMP/TCP/Trace <host>]          |                                                      [Request post <Report DTO>]              |      
+| D |             +                      +                                                                              +                             +                                                                  +                            |
+| L |             |             (<ICMP/TCP/Trace DTO>)                                                                  |                (Optional<ICMP/TCP/Trace DTO>)                                                  |                            +
+| E |             |                      +                                                                              |                             +                                                                  |                         (<INT>)
+--+--             |                      |                                                                              |                             |                                                                  |                            +
+  |               v                      |                                                                              v                             |                                                                  v                            |
+  +--   [========= ICMP/TCP/Trace Service ================================================================================== ICMP/TCP/Trace Service ======================] -----------------+---------------[================== Report Service ===========================]
+  |               |                      ^                                                                              |                             ^                                                                  |                            ^
+  |               |                      |                                                                              |                             |                                                                  +                            |
+  |               |                      +-----------------------------------------------+                              +                             |                                                 [Serialization <Report DTO> to <JSON>]        |  
+  |               |                                                                      |              [Get <ID ICMP/TCP/Trace> from <host>]         |                                                                  +                            |
+  |               |    [Joing <Terminal/Network> + <host> = Entity<ICMP/TCP/Trace>]      |                              +                             |                                                                  |                            |
+--+--             |                 +                          +                         +                              |                             |                                                                  +                            +          
+| T |             |                 |                          |                (<ICMP/TCP/Trace DTO>)                  |                             |                                                               (<JSON>)                     (<INT>)         
+| H |             |                 +                          |                         +                              +                             |                                                                  +                            +         
+| R |             |  (<Terminal DTO> or <Network DTO>)         |                         |                            (<ID>)                          |                                                                  |                            |          
+| O |             |                 +                          |                         |                              +                             +                               +----------------+-----------------+                            +          
+| W |             |                 |                          |      [=== Mapping to <ICMP/TCP/Trace DTO> ===]         |                (Optional<ICMP/TCP/Trace DTO>)               |                |                                 [Getting HTTP Status Code]                       
+--+--             v                 |                          |                         ^                              |                             +                               |                +                                              +  
+  |          [=== http/terminal Tools ===]                     +                         |                              +                             |                               |      [Building HTTP query request]                            |
+  |               |                 ^               (Entity<ICMP/TCP/Trace>)             |             [Get Entity<ICMP/TCP/Trace> by <ID>]           |                               |                 +                                             |
+  |               +                 |                          +                         +                              +                             |                               |                 |                 +---------------------------+                  
+  | (<command> or <http request>)   |                          |               (Entity<ICMP/TCP/Trace>)                 |                             |                               |                 |                 |                  
+  |               +                 |                          |                         +                              |                             +                               |                 +                 +                                  
+  |               |                 |                          +                         |                              |           [=== Mapping to <ICMP/TCP/Trace DTO> ===]         |           (Query<POST>)     (Query<ANSWER>)                            
+  |               v                 |              [Save Entity<ICMP/TCP/Trace>]         |                              |                             +                               |                 +                 +                                   
+  |       [=== CMD or Network from SO ===]                     +                         |                              |                             |                               |                 |                 |           
+  |                                                            |                         |                              |                             |                               |                 v                 |                                    
+  |                                                            |                         |                              |                             +                               |               [=== Network Tools ===]  
+  |                                                            |                         |                              |               (Optional<Entity<ICMP/TCP/Trace>>)            |                 |                 ^                   
+  |                                                            |                         |                              |                             +                               |                 |                 |
+  |                                                            |                         |                              |                             |                               |                v                 |
+  |                                                            v                         |                              v                             |                               |            [=== External Report API ===] 
+  |                                       [===================== ICMP/TCP/Trace DataBase ================================= ICMP/TCP/Trace DataBase ==========================]        |                    
+  |                                                            |                         ^                              |                             ^                               +----------------------------------+                                        
+  |                                                            |                         |                              |                             |                                                                  |    
+  |                                                            |                         +                              |                             |                                                                  |      
+  |                                                            |              (Entity<ICMP/TCP/Trace>)                  |              (Optional<Entity<ICMP/TCP/Trace>>)                                                v
+  |                                                            |                         +                              |                             +                                              [=== Appending Log Warning on app.log file ===]
+  |                                                            v                         |                              v                             |                                                                
+  |                                          [=== Persist Entity<ICMP/TCP/Trace> ===] ---+         [=== Find Entity<ICMP/TCP/Trace> by <ID> ===] -----+                                                               
+  |                                                            |                                                  |           ^                                                                       
+  |                                                            |                                                  |           |                                                                                                       
+  |                                                            v                                                  v           |
+  |                                              ___________________________________________________________________________________________________
+  +--                                           | *** ICMP MAP<ID, ENTITY>  ***  +  *** TCP MAP<ID, ENTITY>  ***  +  *** Trace MAP<ID, ENTITY>  *** |
+
 
 ```
-
 This architecture promotes a clear separation of responsibilities:
 - **Workflow Configuration**: Managed by the `BatchJobsConfig` interface.
 - **Intermediation**: Handled by `Controller` interfaces, bridging the workflow and services.
