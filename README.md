@@ -100,7 +100,7 @@ The project follows a modular and layered architecture to ensure scalability, ma
   |               |              (ResponseFactory<DTO>)                                    |                    (ResponseFactory<DTO>)                                                    |     (ResponseFactory<VOID>)
   |               |                      +                                                 |                             +                                                                |             +
   |               v                      |                                                 v                             |                                                                v             |
-  +--   [============= Ping Controller ============================================================ Ping Controller =======================]-----------------+----------------[========== Report Controler ===========]
+  +--   [============= Ping Controller ============================================================ Ping Controller =======================]-----------------+----------------[========== Report Controller ==========]
   |               |                      ^                                                 |                             ^                                                                      |                 
 --+--             |                      |                                                 |                             |                                                                      |
 | H |             |                      |                                                 |                             |                                                                      |
